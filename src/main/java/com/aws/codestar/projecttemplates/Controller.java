@@ -39,8 +39,10 @@ public class Controller {
 
         String cardnumber = payload.get("cardnumber").toString();
 
-        // now we have cardnumber, type, subtype, store them together with optional nickname, userid into db.
+        // if card number exists, return
+        if (vmap.containsKey(userid) && vmap.get(userid).containsKey(cardnumber)) return false;
 
+        // now we have cardnumber, type, subtype, store them together with optional nickname, userid into db.
         String cardholder = payload.containsKey("cardholder") ? payload.get("cardholder").toString() : null;
         String nickname = payload.containsKey("nickname") ? payload.get("nickname").toString() : null;
 
