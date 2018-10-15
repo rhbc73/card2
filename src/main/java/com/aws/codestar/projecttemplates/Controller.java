@@ -6,12 +6,13 @@ import java.util.*;
 @RestController
 public class Controller {
 
-    Map<String, CardInfo> vmap = new TreeMap<>();
+    TreeMap<String, TreeMap<String, CardInfo>> vmap = new TreeMap<>();
     Controller() {
-        CardInfo card1 = new CardInfo("444433333", "VISA", "PREMIUM CREDIT", "abhi", "my_visa_premium");
-        vmap.put("444433333", card1);
-        CardInfo card2 = new CardInfo("512176622", "MC", "GOLD CREDIT", "abhi", "my_mc_gold");
-        vmap.put("512176622", card2);
+        vmap.put("000001", new TreeMap<>());
+        CardInfo card1 = new CardInfo("000001","444433333", "VISA", "PREMIUM CREDIT", "abhi", "my_visa_premium");
+        vmap.get("000001").put("444433333", card1);
+        CardInfo card2 = new CardInfo("000001","512176622", "MC", "GOLD CREDIT", "abhi", "my_mc_gold");
+        vmap.get("000001").put("512176622", card2);
     }
 
     @RequestMapping("/cardtype/{cardnumber}")
@@ -30,9 +31,9 @@ public class Controller {
     }
 
     // create a record for a card
-    @RequestMapping(value = "/cards/", method = RequestMethod.POST)
-    public @ResponseBody boolean handleCreate(@RequestBody Map<String, Object> payload) {
-        if (!payload.containsKey("cardnumber")) {
+    @RequestMapping(value = "{userid}/cards/", method = RequestMethod.POST)
+    public @ResponseBody boolean handleCreate(@PathVariable("userid") String userid, @RequestBody Map<String, Object> payload) {
+        if ((userid.length() == 0) && !payload.containsKey("cardnumber")) {
             return false;
         }
 
@@ -43,24 +44,28 @@ public class Controller {
         String cardholder = payload.containsKey("cardholder") ? payload.get("cardholder").toString() : null;
         String nickname = payload.containsKey("nickname") ? payload.get("nickname").toString() : null;
 
-        addCard(cardnumber, cardholder, nickname);
+        addCard(userid, cardnumber, cardholder, nickname);
 
         return true;
     }
 
-    private void addCard(String cardnumber, String cardholder, String nickname) {
+    private void addCard(String userid, String cardnumber, String cardholder, String nickname) {
         CardType ctype = GetCardType(cardnumber);
-        CardInfo info = new CardInfo(cardnumber, ctype.getType(), ctype.getSubtype(), cardholder, nickname);
-        vmap.put(cardnumber, info);
+        CardInfo info = new CardInfo(userid, cardnumber, ctype.getType(), ctype.getSubtype(), cardholder, nickname);
+
+        if (!vmap.containsKey(userid)) vmap.put(userid, new TreeMap<String, CardInfo>());;
+        vmap.get(userid).put(cardnumber, info);
     }
 
     // delete credit card record
-    @RequestMapping(value = "/cards/{cardnumber}", method = RequestMethod.DELETE)
-    public @ResponseBody boolean handleDelete(@PathVariable("cardnumber") String cardnumber) {
-        //System.out.println(cardnumber);
-        // Go to db ....
-        if (vmap.containsKey(cardnumber)) {
-            vmap.remove(cardnumber);
+    @RequestMapping(value = "{userid}/cards/{cardnumber}", method = RequestMethod.DELETE)
+    public @ResponseBody boolean handleDelete(@PathVariable("userid") String userid, @PathVariable("cardnumber") String cardnumber) {
+
+        if (vmap.containsKey(userid) && vmap.get(userid).containsKey(cardnumber)) {
+            vmap.get(userid).remove(cardnumber);
+            if (vmap.get(userid).size() == 0) {
+                vmap.remove(userid);
+            }
             return true;
         }
 
@@ -69,32 +74,33 @@ public class Controller {
 
 
     // update credit card record
-    @RequestMapping(value = "/cards/{cardnumber}", method = RequestMethod.PUT)
-    public @ResponseBody boolean handleUpdate(@PathVariable("cardnumber") String cardnumber, @RequestBody Map<String, Object> payload) {
+    @RequestMapping(value = "/{userid}/cards/{cardnumber}", method = RequestMethod.PUT)
+    public @ResponseBody boolean handleUpdate(@PathVariable("userid") String userid, @PathVariable("cardnumber") String cardnumber, @RequestBody Map<String, Object> payload) {
         // Go to db ....
-        if (!vmap.containsKey(cardnumber) || !payload.containsKey("cardnumber")) return false; // both old and new cardnumbers should be available
+        if (!vmap.containsKey(userid)) return false; // no such userid
+        if (!vmap.get(userid).containsKey(cardnumber) || !payload.containsKey("cardnumber")) return false; // both old and new cardnumbers should be available
         String newcardnumber = payload.get("cardnumber").toString();
-        if (!cardnumber.equals(newcardnumber) && vmap.containsKey(newcardnumber)) return false; // duplicate card number
+        if (!cardnumber.equals(newcardnumber) && vmap.get(userid).containsKey(newcardnumber)) return false; // duplicate card number
 
-        vmap.remove(cardnumber);
+        vmap.get(userid).remove(cardnumber);
 
 
         String cardholder = payload.containsKey("cardholder") ? payload.get("cardholder").toString() : null;
         String nickname = payload.containsKey("nickname") ? payload.get("nickname").toString() : null;
 
-        addCard(newcardnumber, cardholder, nickname);
+        addCard(userid, newcardnumber, cardholder, nickname);
         return true;
     }
 
-    @RequestMapping(value = "/cards/", method = RequestMethod.GET)
+    @RequestMapping(value = "{userid}/cards/", method = RequestMethod.GET)
     public @ResponseBody
-    List<CardInfo> handleGet() {
+    List<CardInfo> handleGet(@PathVariable("userid") String userid) {
         // if cardnumer not null, get via cardnumber directly
         // else use hodername + nick name
         // else return wrong
         // Go to db ....
         List<CardInfo> rslt = new ArrayList<>();
-        for (Map.Entry<String, CardInfo> entry : vmap.entrySet()) {
+        for (Map.Entry<String, CardInfo> entry : vmap.get(userid).entrySet()) {
             rslt.add(entry.getValue());
         }
 

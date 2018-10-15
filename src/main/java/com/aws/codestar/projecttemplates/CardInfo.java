@@ -1,7 +1,8 @@
 package com.aws.codestar.projecttemplates;
 
 public class CardInfo {
-    public CardInfo(String cardnumber, String type, String subtype, String cardholder, String nickname) {
+    public CardInfo(String userid, String cardnumber, String type, String subtype, String cardholder, String nickname) {
+        this.userid = userid;
         this.cardnumber = cardnumber;
         this.type = type;
         this.subtype = subtype;
@@ -9,6 +10,7 @@ public class CardInfo {
         this.nickname = nickname;
     }
 
+    public String userid;
     public String cardnumber;
     public String type;
     public String subtype;
